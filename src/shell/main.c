@@ -46,6 +46,7 @@ void pongo_boot_raw(const char *cmd, char *args) {
     task_yield();
 }
 
+uint64_t gM1N1Base;
 extern char gFWVersion[256];
 void pongo_boot_m1n1(const char *cmd, char *args) {
     if (!loader_xfer_recv_count) {
@@ -53,9 +54,13 @@ void pongo_boot_m1n1(const char *cmd, char *args) {
         return;
     }
 
-    loader_xfer_recv_count = 0;
     char *fwversion = dt_get_prop("/chosen", "firmware-version", NULL);
     strlcpy(fwversion, gFWVersion, 256);
+
+    void *m1n1 = alloc_static(loader_xfer_recv_count);
+    memmove(m1n1, loader_xfer_recv_data, loader_xfer_recv_count);
+    loader_xfer_recv_count = 0;
+    gM1N1Base = vatophys_static(m1n1);
 
     gBootFlag = BOOT_FLAG_M1N1;
     task_yield();

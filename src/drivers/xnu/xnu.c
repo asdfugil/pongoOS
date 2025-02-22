@@ -1127,7 +1127,6 @@ void xnu_boot(void)
     {
         panic("Cannot boot XNU with TZ0 unlocked");
     }*/
-    gBootArgs->topOfKernelData = gTopOfKernelData;
 }
 
 void xnu_init(void)

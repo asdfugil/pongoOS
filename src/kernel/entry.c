@@ -284,6 +284,8 @@ __attribute__((noinline)) void pongo_entry_cached(void)
         screen_fill_basecolor();
 }
 
+extern uint64_t gM1N1Base;
+
 /*
 
     Name: pongo_entry
@@ -309,25 +311,28 @@ _Noreturn void pongo_entry(uint64_t *kernel_args, void *entryp, void (*exit_to_e
     set_exception_stack_core0();
     gFramebuffer = (uint32_t*)gBootArgs->Video.v_baseAddr;
     lowlevel_cleanup();
+    gBootArgs->topOfKernelData = gTopOfKernelData;
 
     // Unused space above kernel static area
     void *boot_tramp = (void*)((gTopOfKernelData + 0x3fffULL) & ~0x3fffULL);
     if(gBootFlag == BOOT_FLAG_RAW || gBootFlag == BOOT_FLAG_M1N1)
     {
+        uint64_t entry;
         // We're in EL1 here, but we might need to go back to EL3
         if((__builtin_arm_rsr64("id_aa64pfr0_el1") & 0xf000) != 0)
         {
             __asm__ volatile("smc 0"); // elevate to EL3
         }
-        uint64_t entryOff = 0x800;
         if(gBootFlag == BOOT_FLAG_RAW)
         {
+            entry = (uint64_t)loader_xfer_recv_data - kCacheableView + 0x800000000;
             boot_tramp = NULL;
-            entryOff = 0;
         }
-        // XXX: We should really replace loader_xfer_recv_data with something dedicated here.
-        void *image = (void*)((uint64_t)loader_xfer_recv_data - kCacheableView + 0x800000000 + entryOff);
-        jump_to_image_extended(image, gBootArgs, boot_tramp, gEntryPoint);
+        else
+        {
+            entry = gM1N1Base + 0x800;
+        }
+        jump_to_image_extended((void*)entry, gBootArgs, boot_tramp, gEntryPoint);
     }
     else
     {
