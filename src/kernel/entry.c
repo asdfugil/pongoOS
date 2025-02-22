@@ -244,8 +244,9 @@ __attribute__((noinline)) void pongo_entry_cached()
     switch(gBootFlag)
     {
         default: // >4
-        case BOOT_FLAG_RAW: // 4
         case BOOT_FLAG_M1N1: // 3
+            boot_msg = "Booting m1n1...";
+        case BOOT_FLAG_RAW: // 4
             break;
 
         case BOOT_FLAG_HOOK: // 2
@@ -284,6 +285,8 @@ __attribute__((noinline)) void pongo_entry_cached()
         screen_fill_basecolor();
 }
 
+extern char* gM1N1Base;;
+
 /*
 
     Name: pongo_entry
@@ -314,19 +317,21 @@ _Noreturn void pongo_entry(uint64_t *kernel_args, void *entryp, void (*exit_to_e
     void *boot_tramp = (void*)((gTopOfKernelData + 0x3fffULL) & ~0x3fffULL);
     if(gBootFlag == BOOT_FLAG_RAW || gBootFlag == BOOT_FLAG_M1N1)
     {
+        uint64_t entry;
         // We're in EL1 here, but we might need to go back to EL3
         if((__builtin_arm_rsr64("id_aa64pfr0_el1") & 0xf000) != 0)
         {
             __asm__ volatile("smc 0"); // elevate to EL3
         }
-        uint64_t entryOff = 0x800;
         if(gBootFlag == BOOT_FLAG_RAW)
         {
+            entry = (uint64_t)loader_xfer_recv_data - kCacheableView + 0x800000000;
             boot_tramp = NULL;
-            entryOff = 0;
+        } else {
+            entry = (uint64_t)gM1N1Base + 0x800;
         }
         // XXX: We should really replace loader_xfer_recv_data with something dedicated here.
-        void *image = (void*)((uint64_t)loader_xfer_recv_data - kCacheableView + 0x800000000 + entryOff);
+        void *image = (void*)(entry);
         jump_to_image_extended(image, gBootArgs, boot_tramp, gEntryPoint);
     }
     else

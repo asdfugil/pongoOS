@@ -46,6 +46,7 @@ void pongo_boot_raw() {
     task_yield();
 }
 
+char* gM1N1Base;
 extern char gFWVersion[256];
 void pongo_boot_m1n1() {
     if (!loader_xfer_recv_count) {
@@ -53,9 +54,14 @@ void pongo_boot_m1n1() {
         return;
     }
 
-    loader_xfer_recv_count = 0;
     char *fwversion = dt_get_prop("/chosen", "firmware-version", NULL);
     strlcpy(fwversion, gFWVersion, 256);
+
+    gM1N1Base = (char*)(((uint64_t)gBootArgs->topOfKernelData + 0x3fff) & ~0x3fff);
+    memmove(gM1N1Base - 0x800000000 + kCacheableView, loader_xfer_recv_data, loader_xfer_recv_count);
+    gBootArgs->topOfKernelData = ((uint64_t)gM1N1Base + loader_xfer_recv_count + 0x3fff) & ~0x3fff;
+    gTopOfKernelData = gBootArgs->topOfKernelData;
+    loader_xfer_recv_count = 0;
 
     gBootFlag = BOOT_FLAG_M1N1;
     task_yield();
